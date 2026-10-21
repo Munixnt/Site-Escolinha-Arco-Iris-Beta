@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '@/api/client';
 import { calcularCategoria, calcularIdade, gerarNumeroMatricula, isIdadeDeMatriculaValida } from '@/utils/athleteUtils';
 import { Upload, CheckCircle, AlertCircle, Loader2, User, FileText, Shield } from 'lucide-react';
+import { EditableText } from '@/components/layout/SiteEditor';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -132,8 +133,8 @@ export default function Matricula() {
       {/* Hero */}
       <section className="relative py-20 bg-burgundy">
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
-          <p className="font-montserrat font-semibold text-gold uppercase tracking-widest text-sm mb-4">Faça parte do projeto fazendo hoje para refletir no amanha - parte III</p>
-          <h1 className="font-montserrat font-black text-white text-5xl mb-4">MATRÍCULA ONLINE</h1>
+          <p className="font-montserrat font-semibold text-gold uppercase tracking-widest text-sm mb-4"><EditableText field="hero.eyebrow">Faça parte do projeto fazendo hoje para refletir no amanha - parte III</EditableText></p>
+          <h1 className="font-montserrat font-black text-white text-5xl mb-4"><EditableText field="hero.title">MATRÍCULA ONLINE</EditableText></h1>
           <div className="w-16 h-1 bg-gold mx-auto" />
         </div>
       </section>

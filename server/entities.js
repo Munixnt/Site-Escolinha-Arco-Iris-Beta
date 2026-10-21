@@ -6,6 +6,11 @@
 const CATEGORIAS = ['Sub-7', 'Sub-9', 'Sub-11', 'Sub-13', 'Sub-15', 'Sub-17', 'Adulto'];
 
 export const entities = {
+  SitePage: {
+    required: ['slug'],
+    defaults: { fields: {}, blocks: [] },
+    perms: { read: 'public', create: 'admin', update: 'admin', delete: 'admin' },
+  },
   Athlete: {
     required: ['nome', 'dataNascimento', 'nomeResponsavel', 'telefoneResponsavel'],
     enums: {

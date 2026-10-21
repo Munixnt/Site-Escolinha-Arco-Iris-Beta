@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { FileText, Download, Loader2, ShieldCheck, FolderOpen } from 'lucide-react';
+import { EditableText } from '@/components/layout/SiteEditor';
 
 const CATEGORIAS = ['Estatuto', 'Eleições', 'Projetos', 'Prestação de Contas', 'Atas', 'Outros'];
 
@@ -31,15 +32,14 @@ export default function Transparencia() {
         </div>
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
           <p className="font-montserrat font-semibold text-gold uppercase tracking-widest text-sm mb-4">
-            Documentos e prestação de contas
+            <EditableText field="hero.eyebrow">Documentos e prestação de contas</EditableText>
           </p>
           <h1 className="font-montserrat font-black text-white text-5xl md:text-6xl mb-4">
-            TRANSPARÊNCIA
+            <EditableText field="hero.title">TRANSPARÊNCIA</EditableText>
           </h1>
           <div className="w-16 h-1 bg-gold mx-auto mb-6" />
           <p className="text-white/70 text-lg max-w-2xl mx-auto">
-            Acesso público aos documentos institucionais da Associação Escolinha de Futebol Arco-Íris: estatuto,
-            eleições, projetos e prestação de contas.
+            <EditableText field="hero.description">Acesso público aos documentos institucionais da Associação Escolinha de Futebol Arco-Íris: estatuto, eleições, projetos e prestação de contas.</EditableText>
           </p>
         </div>
       </section>
@@ -96,10 +96,9 @@ export default function Transparencia() {
       <section className="py-16 px-4 bg-gray-50">
         <div className="max-w-3xl mx-auto text-center">
           <ShieldCheck size={36} className="text-burgundy mx-auto mb-4" />
-          <h2 className="font-montserrat font-black text-burgundy text-2xl mb-3">COMPROMISSO COM A TRANSPARÊNCIA</h2>
+          <h2 className="font-montserrat font-black text-burgundy text-2xl mb-3"><EditableText field="commitment.title">COMPROMISSO COM A TRANSPARÊNCIA</EditableText></h2>
           <p className="text-gray-600">
-            A Escolinha Arco-Íris disponibiliza publicamente seus documentos institucionais, projetos e prestações
-            de contas, reforçando o compromisso com a gestão transparente dos recursos.
+            <EditableText field="commitment.description">A Escolinha Arco-Íris disponibiliza publicamente seus documentos institucionais, projetos e prestações de contas, reforçando o compromisso com a gestão transparente dos recursos.</EditableText>
           </p>
         </div>
       </section>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { Image, Play, X } from 'lucide-react';
+import { EditableImage, EditableText } from '@/components/layout/SiteEditor';
 
 const DEFAULT_ALBUMS = [
   { id: 'treinos', nome: 'Treinos', descricao: 'Momentos dos treinos diários' },
@@ -50,11 +51,11 @@ export default function Galeria() {
       {/* Hero */}
       <section className="relative py-24 bg-burgundy">
         <div className="absolute inset-0 opacity-20">
-          <img src="https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=1920&q=80" alt="" className="w-full h-full object-cover" />
+          <EditableImage field="hero.background" src="https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=1920&q=80" alt="" className="w-full h-full object-cover" />
         </div>
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
-          <p className="font-montserrat font-semibold text-gold uppercase tracking-widest text-sm mb-4">O coração da escola</p>
-          <h1 className="font-montserrat font-black text-white text-5xl mb-4">GALERIA</h1>
+          <p className="font-montserrat font-semibold text-gold uppercase tracking-widest text-sm mb-4"><EditableText field="hero.eyebrow">O coração da escola</EditableText></p>
+          <h1 className="font-montserrat font-black text-white text-5xl mb-4"><EditableText field="hero.title">GALERIA</EditableText></h1>
           <div className="w-16 h-1 bg-gold mx-auto" />
         </div>
       </section>

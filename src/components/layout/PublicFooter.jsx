@@ -48,7 +48,7 @@ export default function PublicFooter() {
             <p className="text-gold font-montserrat font-semibold text-sm mb-1">Nilo Peçanha — BA | Baixo Sul da Bahia</p>
             <p className="text-white/70 text-xs italic">"Fazendo Hoje Para Refletir no Amanhã"</p>
             <p className="text-white/50 text-xs mt-2">1ª Travessa Dona Laura, Baixa Fria</p>
-            <p className="text-white/50 text-xs">(73) 9 9851-8813 · assarcoiris@gmail.com</p>
+            <p className="text-white/50 text-xs">(73) 9 9851-8813 · erisvaldomarques18@gmail.com</p>
             <p className="text-white/40 text-xs mt-1">CNPJ: 35.308.686/0001-67</p>
           </div>
 
@@ -58,7 +58,7 @@ export default function PublicFooter() {
               className="text-gold font-montserrat font-bold text-sm hover:underline">
               MzTecSoluções
             </a>
-            <p className="text-white/40 text-xs mt-1">contato@mztecsolucoes.com.br</p>
+            <p className="text-white/40 text-xs mt-1">mztecsolucoes@gmail.com</p>
           </div>
         </div>
         <div className="text-center mt-6 pt-4 border-t border-white/10">

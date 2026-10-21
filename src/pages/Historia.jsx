@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { motion } from 'framer-motion';
+import { EditableImage, EditableText } from '@/components/layout/SiteEditor';
 
 const LOGO_URL = "/logo.jpeg";
 
@@ -34,8 +35,8 @@ export default function Historia() {
           <img src="https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=1920&q=80" alt="" className="w-full h-full object-cover" />
         </div>
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
-          <p className="font-montserrat font-semibold text-gold uppercase tracking-widest text-sm mb-4">Conheça nossa trajetória</p>
-          <h1 className="font-montserrat font-black text-white text-5xl mb-4">NOSSA HISTÓRIA</h1>
+          <p className="font-montserrat font-semibold text-gold uppercase tracking-widest text-sm mb-4"><EditableText field="hero.eyebrow">Conheça nossa trajetória</EditableText></p>
+          <h1 className="font-montserrat font-black text-white text-5xl mb-4"><EditableText field="hero.title">NOSSA HISTÓRIA</EditableText></h1>
           <div className="w-16 h-1 bg-gold mx-auto" />
         </div>
       </section>
@@ -46,20 +47,21 @@ export default function Historia() {
           <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
             <div>
               <span className="inline-block w-12 h-1 bg-gold mb-4" />
-              <h2 className="font-montserrat font-black text-burgundy text-3xl mb-4">UMA OSC A SERVIÇO DA COMUNIDADE</h2>
+              <h2 className="font-montserrat font-black text-burgundy text-3xl mb-4"><EditableText field="story.title">UMA OSC A SERVIÇO DA COMUNIDADE</EditableText></h2>
               <p className="text-gray-600 text-lg leading-relaxed mb-4">
-                A Arco-Iris é uma Organização da Sociedade Civil (OSC) fundada em 2017 por Erisvaldo Marques Barbosa e seus filhos Jessé e Matheus, a partir do sonho de oferecer esporte e inclusão social às crianças de Nilo Peçanha — BA. Hoje atende crianças e adolescentes de 7 a 17 anos nas comunidades da sede e de Jatimane.
+                <EditableText field="story.paragraph1">A Arco-Iris é uma Organização da Sociedade Civil (OSC) fundada em 2017 por Erisvaldo Marques Barbosa e seus filhos Jessé e Matheus, a partir do sonho de oferecer esporte e inclusão social às crianças de Nilo Peçanha — BA. Hoje atende crianças e adolescentes de 7 a 17 anos nas comunidades da sede e de Jatimane.</EditableText>
               </p>
               <p className="text-gray-600 text-lg leading-relaxed mb-4">
-                Com o slogan <strong className="text-burgundy">"Fazendo Hoje Para Refletir no Amanhã"</strong>, a associação usa o futebol para combater a evasão escolar, estimular atividades físicas e promover o convívio comunitário. Os atletas devem estar matriculados na escola com média mínima de 5,0.
+                <EditableText field="story.paragraph2">Com o slogan "Fazendo Hoje Para Refletir no Amanhã", a associação usa o futebol para combater a evasão escolar, estimular atividades físicas e promover o convívio comunitário. Os atletas devem estar matriculados na escola com média mínima de 5,0.</EditableText>
               </p>
               <p className="text-gray-600 text-sm">
-                <strong>CNPJ:</strong> 35.308.686/0001-67 · <strong>Presidente:</strong> Erisvaldo Marques Barbosa · <strong>Contato:</strong> (73) 9 9851-8813
+                <EditableText field="story.contact">CNPJ: 35.308.686/0001-67 · Presidente: Erisvaldo Marques Barbosa · Contato: (73) 9 9851-8813</EditableText>
               </p>
             </div>
             <div className="relative">
               <div className="absolute -inset-4 border-2 border-gold rounded-2xl opacity-30" />
-              <img
+              <EditableImage
+                field="story.logo"
                 src={LOGO_URL}
                 alt="Escudo Arco Iris"
                 className="relative w-64 h-64 mx-auto rounded-full object-cover border-4 border-gold shadow-2xl"
@@ -74,7 +76,7 @@ export default function Historia() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-14">
             <span className="inline-block w-12 h-1 bg-gold mb-4" />
-            <h2 className="font-montserrat font-black text-burgundy text-3xl">LINHA DO TEMPO</h2>
+            <h2 className="font-montserrat font-black text-burgundy text-3xl"><EditableText field="timeline.title">LINHA DO TEMPO</EditableText></h2>
           </div>
 
           {loading ? (
@@ -119,11 +121,11 @@ export default function Historia() {
             { title: 'MISSÃO', text: 'Contribuir na formação de cidadãos, buscando a inclusão social através de iniciativas técnico-didático-pedagógicas voltadas ao equilíbrio dos processos de interação social cooperativa e competitiva.' },
             { title: 'VISÃO', text: 'Ser referência no desenvolvimento de crianças e jovens do Baixo Sul da Bahia, usando o futebol como instrumento de transformação social e prevenção às drogas e ociosidade.' },
             { title: 'VALORES', text: 'Respeito aos semelhantes e à natureza, disciplina, vida saudável, trabalho em equipe, fair play e honrar a camisa. Dê o máximo de si na escola — estude sempre.' },
-          ].map(({ title, text }) => (
+          ].map(({ title, text }, index) => (
             <div key={title} className="bg-white/10 rounded-xl p-6 border border-gold/30">
               <div className="w-1 h-8 bg-gold mx-auto mb-4 rounded-full" />
-              <h3 className="font-montserrat font-black text-gold text-xl mb-3">{title}</h3>
-              <p className="text-white/80 text-sm leading-relaxed">{text}</p>
+              <h3 className="font-montserrat font-black text-gold text-xl mb-3"><EditableText field={`values.${index}.title`}>{title}</EditableText></h3>
+              <p className="text-white/80 text-sm leading-relaxed"><EditableText field={`values.${index}.text`}>{text}</EditableText></p>
             </div>
           ))}
         </div>

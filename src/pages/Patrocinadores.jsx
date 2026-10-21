@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
-import { Star, TrendingUp, Users, Heart, ArrowRight, Mail } from 'lucide-react';
+import { Star, TrendingUp, Users, Heart, Mail } from 'lucide-react';
+import { EditableText } from '@/components/layout/SiteEditor';
 
 const BENEFICIOS = [
   { icon: TrendingUp, title: 'Visibilidade Regional', desc: 'Sua marca exposta em todos os uniformes, materiais e redes sociais da escolinha, alcançando toda a comunidade de Nilo Peçanha e região.' },
@@ -26,14 +27,14 @@ export default function Patrocinadores() {
         </div>
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
           <p className="font-montserrat font-semibold text-gold uppercase tracking-widest text-sm mb-4">
-            Parceiros que acreditam no esporte
+            <EditableText field="hero.eyebrow">Parceiros que acreditam no esporte</EditableText>
           </p>
           <h1 className="font-montserrat font-black text-white text-5xl md:text-6xl mb-4">
-            SEJA UM<br /><span className="text-gold">PATROCINADOR</span>
+            <EditableText field="hero.title">SEJA UM PATROCINADOR</EditableText>
           </h1>
           <div className="w-16 h-1 bg-gold mx-auto mb-6" />
           <p className="text-white/70 text-lg max-w-2xl mx-auto">
-            Um espaço exclusivo para os parceiros da Arco Iris. Junte-se a nós e faça parte da transformação de vidas através do futebol.
+            <EditableText field="hero.description">Um espaço exclusivo para os parceiros da Arco Iris. Junte-se a nós e faça parte da transformação de vidas através do futebol.</EditableText>
           </p>
         </div>
       </section>
@@ -43,17 +44,17 @@ export default function Patrocinadores() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-14">
             <span className="inline-block w-12 h-1 bg-gold mb-4" />
-            <h2 className="font-montserrat font-black text-burgundy text-3xl">POR QUE PATROCINAR?</h2>
+            <h2 className="font-montserrat font-black text-burgundy text-3xl"><EditableText field="benefits.title">POR QUE PATROCINAR?</EditableText></h2>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
-            {BENEFICIOS.map(({ icon: Icon, title, desc }) => (
+            {BENEFICIOS.map(({ icon: Icon, title, desc }, index) => (
               <div key={title} className="flex gap-5 p-6 bg-gray-50 rounded-xl card-gold-border hover:shadow-md transition-all">
                 <div className="flex-shrink-0 w-14 h-14 bg-burgundy rounded-xl flex items-center justify-center">
                   <Icon size={26} className="text-gold" />
                 </div>
                 <div>
-                  <h3 className="font-montserrat font-bold text-burgundy text-lg mb-2">{title}</h3>
-                  <p className="text-gray-600">{desc}</p>
+                  <h3 className="font-montserrat font-bold text-burgundy text-lg mb-2"><EditableText field={`benefits.${index}.title`}>{title}</EditableText></h3>
+                  <p className="text-gray-600"><EditableText field={`benefits.${index}.description`}>{desc}</EditableText></p>
                 </div>
               </div>
             ))}
@@ -67,7 +68,7 @@ export default function Patrocinadores() {
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-10">
               <span className="inline-block w-12 h-1 bg-gold mb-4" />
-              <h2 className="font-montserrat font-black text-burgundy text-3xl">NOSSOS PARCEIROS</h2>
+              <h2 className="font-montserrat font-black text-burgundy text-3xl"><EditableText field="sponsors.title">NOSSOS PARCEIROS</EditableText></h2>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               {sponsors.map((s, i) => (
@@ -87,24 +88,24 @@ export default function Patrocinadores() {
       {/* CTA Contato */}
       <section className="py-20 px-4 bg-burgundy">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-montserrat font-black text-white text-4xl mb-4">VAMOS CONVERSAR?</h2>
+          <h2 className="font-montserrat font-black text-white text-4xl mb-4"><EditableText field="contact.title">VAMOS CONVERSAR?</EditableText></h2>
           <div className="w-16 h-1 bg-gold mx-auto mb-6" />
           <p className="text-white/80 text-lg mb-8">
-            Entre em contato conosco e descubra as opções de patrocínio disponíveis para a sua empresa.
+            <EditableText field="contact.description">Entre em contato conosco e descubra as opções de patrocínio disponíveis para a sua empresa.</EditableText>
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href="mailto:assarcoiris@gmail.com"
+              href="mailto:erisvaldomarques18@gmail.com"
               className="inline-flex items-center gap-3 px-8 py-4 bg-gold text-burgundy font-montserrat font-black text-lg rounded-lg hover:bg-yellow-400 transition-all"
             >
               <Mail size={22} />
-              assarcoiris@gmail.com
+              <EditableText field="contact.email">erisvaldomarques18@gmail.com</EditableText>
             </a>
             <a
               href="tel:+5573998518813"
               className="inline-flex items-center gap-3 px-8 py-4 border-2 border-gold text-gold font-montserrat font-black text-lg rounded-lg hover:bg-gold hover:text-burgundy transition-all"
             >
-              (73) 9 9851-8813
+              <EditableText field="contact.phone">(73) 9 9851-8813</EditableText>
             </a>
           </div>
           <p className="text-white/50 text-sm mt-6">
