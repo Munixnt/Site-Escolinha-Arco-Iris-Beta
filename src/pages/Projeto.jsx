@@ -12,14 +12,14 @@ const FICHA = [
 ];
 
 const METAS = [
-  { icon: Users, titulo: 'Atender 50 atletas', desc: 'Crianças e adolescentes de 8 a 15 anos das comunidades de Nilo Peçanha e Jatimane.' },
+  { icon: Users, titulo: 'Atender 50 atletas', desc: 'Crianças e adolescentes de 7 a 17 anos das comunidades de Nilo Peçanha e Jatimane.' },
   { icon: BookOpen, titulo: 'Combater a evasão escolar', desc: 'A permanência e o desempenho escolar (média mínima 5,0) são requisitos de participação.' },
   { icon: Trophy, titulo: 'Desenvolvimento esportivo', desc: 'Treinos tematizados com fundamentos básicos, derivados e específicos, formando o atleta completo.' },
   { icon: Heart, titulo: 'Convívio social e familiar', desc: 'Ações que fortalecem os vínculos sociais e familiares dos participantes.' },
 ];
 
 const PUBLICO = [
-  'Crianças e adolescentes de 8 a 15 anos',
+  'Crianças e adolescentes de 7 a 17 anos',
   'Comunidades de Nilo Peçanha e Jatimane (Baixo Sul da Bahia)',
   'Matriculados na escola, com média mínima de 5,0',
 ];
@@ -138,7 +138,7 @@ export default function Projeto() {
               socioeducativas e ações de convívio ao longo de todo o período.
             </p>
             <p className="text-gray-600 mt-4">
-              As turmas são organizadas por categoria, do Sub-7 ao Sub-15, respeitando a faixa etária de cada atleta.
+              As turmas são organizadas por categoria, do Sub-7 ao Sub-17, respeitando a faixa etária de cada atleta.
             </p>
           </div>
         </div>
@@ -192,7 +192,7 @@ export default function Projeto() {
           </h2>
           <div className="w-16 h-1 bg-gold mx-auto mb-6" />
           <p className="text-white/80 text-lg mb-8">
-            Inscrições abertas para crianças e adolescentes de 8 a 15 anos das comunidades de Nilo Peçanha e Jatimane.
+            Inscrições abertas para crianças e adolescentes de 7 a 17 anos das comunidades de Nilo Peçanha e Jatimane.
           </p>
           <Link
             to="/matricula"

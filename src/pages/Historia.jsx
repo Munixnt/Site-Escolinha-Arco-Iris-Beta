@@ -48,7 +48,7 @@ export default function Historia() {
               <span className="inline-block w-12 h-1 bg-gold mb-4" />
               <h2 className="font-montserrat font-black text-burgundy text-3xl mb-4">UMA OSC A SERVIÇO DA COMUNIDADE</h2>
               <p className="text-gray-600 text-lg leading-relaxed mb-4">
-                A Arco-Iris é uma Organização da Sociedade Civil (OSC) fundada em 2017 por Erisvaldo Marques Barbosa e seus filhos Jessé e Matheus, a partir do sonho de oferecer esporte e inclusão social às crianças de Nilo Peçanha — BA. Hoje atende crianças e adolescentes de 08 a 15 anos nas comunidades da sede e de Jatimane.
+                A Arco-Iris é uma Organização da Sociedade Civil (OSC) fundada em 2017 por Erisvaldo Marques Barbosa e seus filhos Jessé e Matheus, a partir do sonho de oferecer esporte e inclusão social às crianças de Nilo Peçanha — BA. Hoje atende crianças e adolescentes de 7 a 17 anos nas comunidades da sede e de Jatimane.
               </p>
               <p className="text-gray-600 text-lg leading-relaxed mb-4">
                 Com o slogan <strong className="text-burgundy">"Fazendo Hoje Para Refletir no Amanhã"</strong>, a associação usa o futebol para combater a evasão escolar, estimular atividades físicas e promover o convívio comunitário. Os atletas devem estar matriculados na escola com média mínima de 5,0.

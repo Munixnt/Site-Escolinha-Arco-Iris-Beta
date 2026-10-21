@@ -1,12 +1,13 @@
-// Importa dados exportados do Base44 (JSON ou CSV) para o banco local.
+// Importa dados exportados do Base44 (JSON ou CSV) para o Supabase.
 // Uso: npm run import-data -- Athlete caminho/atletas.csv
 //      npm run import-data -- Sponsor caminho/patrocinadores.json
 // Se o registro já tiver "id", ele é mantido; se esse id já existir, o registro é ignorado.
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { Store } from './store.js';
 import { entities } from './entities.js';
+import { createSupabaseClient } from './supabase.js';
+import { SupabaseStore } from './supabase-store.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [entity, file] = process.argv.slice(2);
@@ -52,12 +53,8 @@ function coerce(v) {
 
 const raw = fs.readFileSync(file, 'utf8');
 const records = file.toLowerCase().endsWith('.json') ? JSON.parse(raw) : parseCsv(raw);
-const dataDir = path.resolve(ROOT, process.env.DATA_DIR || 'data');
-const store = new Store(path.join(dataDir, 'db.json'));
-const table = store.table(entity);
-const ids = new Set(table.map((d) => d.id));
 const now = new Date().toISOString();
-let added = 0, skipped = 0;
+const docs = [];
 
 for (const rec of Array.isArray(records) ? records : [records]) {
   const doc = {};
@@ -67,13 +64,19 @@ for (const rec of Array.isArray(records) ? records : [records]) {
   }
   // Campos internos que o Base44 costuma exportar
   for (const k of ['created_by', 'created_by_id', 'is_sample', '__v']) delete doc[k];
-  if (doc.id && ids.has(String(doc.id))) { skipped++; continue; }
   doc.id = doc.id ? String(doc.id) : store.newId();
   doc.created_date = doc.created_date || now;
   doc.updated_date = doc.updated_date || doc.created_date;
-  ids.add(doc.id);
-  table.push(doc);
-  added++;
+  docs.push(doc);
 }
-store.flush();
-console.log(`${entity}: ${added} importado(s), ${skipped} ignorado(s) (id já existente).`);
+
+async function importRecords() {
+  const store = new SupabaseStore(createSupabaseClient());
+  const { inserted, skipped } = await store.insertMissing(entity, docs);
+  console.log(`${entity}: ${inserted} importado(s), ${skipped} ignorado(s) (id já existente).`);
+}
+
+importRecords().catch((error) => {
+  console.error(`[import-data] Falha ao importar para o Supabase: ${error.message}`);
+  process.exitCode = 1;
+});

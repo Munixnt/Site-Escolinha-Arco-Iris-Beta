@@ -1,27 +1,4 @@
-export function calcularCategoria(dataNascimento) {
-  if (!dataNascimento) return 'Adulto';
-  const hoje = new Date();
-  const nasc = new Date(dataNascimento);
-  const idade = hoje.getFullYear() - nasc.getFullYear();
-
-  if (idade <= 7) return 'Sub-7';
-  if (idade <= 9) return 'Sub-9';
-  if (idade <= 11) return 'Sub-11';
-  if (idade <= 13) return 'Sub-13';
-  if (idade <= 15) return 'Sub-15';
-  if (idade <= 17) return 'Sub-17';
-  return 'Adulto';
-}
-
-export function calcularIdade(dataNascimento) {
-  if (!dataNascimento) return 0;
-  const hoje = new Date();
-  const nasc = new Date(dataNascimento);
-  let idade = hoje.getFullYear() - nasc.getFullYear();
-  const m = hoje.getMonth() - nasc.getMonth();
-  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-  return idade;
-}
+export { calcularCategoria, calcularIdade, isIdadeDeMatriculaValida } from '../../shared/athlete.js';
 
 export function gerarNumeroMatricula() {
   const ano = new Date().getFullYear();

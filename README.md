@@ -9,22 +9,35 @@ Requisitos: Node.js 18.17 ou superior.
 
 ```bash
 npm install
-cp .env.example .env        # (Windows: copy .env.example .env) e ajuste ADMIN_EMAIL / ADMIN_PASSWORD
+cp .env.example .env        # Windows: copy .env.example .env
 npm run dev
 ```
 
+- Configure `SUPABASE_URL`, `SUPABASE_SECRET_KEY` e um `JWT_SECRET` estável no `.env`.
+- `SUPABASE_PUBLISHABLE_KEY` não dá acesso de escrita ao backend; nunca use a secret/service-role key no front-end ou no Git.
 - Site: http://localhost:5173
-- API: http://localhost:3001 (o Vite já redireciona `/api` e `/uploads` para ela)
+- API: http://localhost:3001 (o Vite redireciona `/api` para ela)
 - Painel: http://localhost:5173/login
 
-Na primeira execução é criado um administrador com `ADMIN_EMAIL`/`ADMIN_PASSWORD` do `.env`.
-Se `ADMIN_PASSWORD` estiver vazio, uma senha aleatória aparece no terminal (anote).
+Antes de iniciar, execute [supabase/schema.sql](./supabase/schema.sql) no SQL Editor do Supabase. Ele cria a tabela `app_records` com RLS habilitado e os buckets `public-assets` e `athlete-documents`.
+
+Na primeira execução é criado no Supabase um administrador com `ADMIN_EMAIL`/`ADMIN_PASSWORD` do `.env`. Se `ADMIN_PASSWORD` estiver vazio, uma senha aleatória aparece no terminal (anote).
 
 Criar outro admin ou redefinir uma senha:
 
 ```bash
 npm run create-admin -- email@exemplo.com SenhaComPeloMenos8 "Nome"
 ```
+
+## Migrar os dados locais para o Supabase
+
+Com o schema criado e `SUPABASE_SECRET_KEY` configurada no `.env`, execute:
+
+```bash
+npm run migrate-data
+```
+
+O comando transfere registros de `data/db.json`, inclusive o administrador existente, preserva IDs e envia arquivos de `data/uploads`. É idempotente: IDs que já existirem no Supabase não são sobrescritos. Documentos e fotos dos atletas ficam no bucket privado; os demais arquivos ficam no bucket público. O comando não apaga nem altera os dados locais — mantenha a pasta `data/` como backup até confirmar a migração.
 
 ## Logo do site (passo manual obrigatório)
 
@@ -66,8 +79,9 @@ npm start                    # um único processo serve o site (dist/) + API + u
 Defina no ambiente: `PORT`, `JWT_SECRET` (valor longo e aleatório), `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
 Se usar proxy reverso (Nginx, Cloudflare etc.), use HTTPS e defina `TRUST_PROXY=true`.
 
-**Backup:** tudo que importa fica na pasta `data/` (`db.json` = banco, `uploads/` = arquivos, `secret.key` = segredo de login). Copie essa pasta regularmente.
-A pasta `data/` precisa ser persistente: em hospedagens que apagam o disco a cada deploy (Heroku, Render free, Vercel...), use um volume/disco persistente ou outro servidor (VPS).
+Configure `SUPABASE_URL`, `SUPABASE_SECRET_KEY` e um `JWT_SECRET` estável também no ambiente de produção. A chave secreta do Supabase só deve existir no servidor.
+
+**Backup:** os registros e uploads ficam no Supabase. Use os backups do projeto Supabase e mantenha uma cópia da pasta `data/` local durante e depois da migração como backup independente.
 
 ## O que mudou em relação ao Base44
 
@@ -76,16 +90,16 @@ A pasta `data/` precisa ser persistente: em hospedagens que apagam o disco a cad
 | `@base44/sdk`, `@base44/vite-plugin` | removidos |
 | `base44.entities.X...` | `api.entities.X...` (`src/api/client.js`, mesma interface) |
 | Login/SSO do Base44 | Login por e-mail e senha em `/login` |
-| `base44.integrations.Core.UploadFile` | upload para `data/uploads` (`POST /api/upload`) |
-| Banco do Base44 | `data/db.json` (arquivo JSON, sem instalar banco) |
+| `base44.integrations.Core.UploadFile` | upload via backend para Supabase Storage |
+| Banco local JSON | Supabase Postgres (`app_records`) |
 | Regras `rls` das entidades | `server/entities.js` |
 
 Permissões (`server/entities.js`):
 - Público pode **ler** patrocinadores ativos, galeria, linha do tempo e documentos de transparência ativos, e **criar** matrícula (sempre salva como `pendente`).
 - Todo o resto (atletas, financeiro, frequência, avisos, escalações e qualquer alteração) exige login de admin.
 
-## Limites conhecidos
+## Arquivos e permissões
 
-- O banco em arquivo JSON atende bem uma escolinha (centenas/poucos milhares de registros). Se crescer muito, troque `server/store.js` por SQLite/Postgres mantendo a mesma API.
 - Uploads aceitam imagens, PDF, vídeo (mp4/webm/mov) e documentos Office/txt, até 25 MB (`MAX_UPLOAD_MB`). SVG e HTML são bloqueados de propósito.
-- Os arquivos de `/uploads` são acessíveis por quem tiver o link (nome aleatório e impossível de adivinhar), como era no Base44. Não compartilhe links de RG/atestado.
+- `public-assets` contém arquivos públicos do site. `athlete-documents` é privado e os links temporários só são emitidos para administradores autenticados.
+- A tabela `app_records` não tem políticas públicas de RLS; somente o backend, usando a chave secreta, acessa os dados. Mantenha essa chave exclusivamente no servidor.

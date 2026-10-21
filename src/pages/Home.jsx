@@ -6,13 +6,13 @@ const LOGO_URL = "/logo.jpeg";
 const STATS = [
 { icon: Calendar, value: '2017', label: 'Fundada em' },
 { icon: Users, value: '50+', label: 'Atletas no Projeto' },
-{ icon: Trophy, value: 'Sub-8 ao Sub-15', label: 'Categorias' },
+{ icon: Trophy, value: 'Sub-7 ao Sub-17', label: 'Categorias' },
 { icon: Star, value: 'Nilo Peçanha-BA', label: 'Baixo Sul da Bahia' }];
 
 const FEATURES = [
 { icon: Shield, title: 'Inclusão Social', desc: 'Contribuímos na formação de cidadãos, buscando a inclusão social através de iniciativas técnico-didático-pedagógicas voltadas ao futebol.' },
-{ icon: Trophy, title: 'Metodologia Estruturada', desc: 'Treinos tematizados com fundamentos básicos (8-11 anos), derivados e específicos (12-15 anos), desenvolvendo o atleta completo.' },
-{ icon: Heart, title: 'Comunidade e Família', desc: 'Atendemos crianças e adolescentes das comunidades de Nilo Peçanha e Jatimane, fortalecendo o convívio social e familiar.' }];
+{ icon: Trophy, title: 'Metodologia Estruturada', desc: 'Treinos tematizados com fundamentos básicos (7-17 anos), derivados e específicos (12-17 anos), desenvolvendo o atleta completo.' },
+{ icon: Heart, title: 'Comunidade e Família', desc: 'Atendemos crianças e adolescentes de Nilo Peçanha e Comunidades, fortalecendo o convívio social e familiar.' }];
 
 
 export default function Home() {
@@ -90,7 +90,7 @@ export default function Home() {
           <div className="text-center mb-14">
             <span className="inline-block w-12 h-1 bg-gold mb-4" />
             <h2 className="font-montserrat font-black text-burgundy text-4xl mb-4">QUEM SOMOS</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto text-lg">A Arco-Iris é uma Organização da Sociedade Civil (OSC) que usa o futebol como instrumento de inclusão social, combate à evasão escolar e formação cidadã de crianças e adolescentes de 8 a 15 anos.</p>
+            <p className="text-gray-600 max-w-2xl mx-auto text-lg">A Arco-Iris é uma Organização da Sociedade Civil (OSC) que usa o futebol como instrumento de inclusão social, combate à evasão escolar e formação cidadã de crianças e adolescentes de 7 a 17 anos.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -151,7 +151,7 @@ export default function Home() {
           </h2>
           <div className="w-16 h-1 bg-gold mx-auto mb-6" />
           <p className="text-white/80 text-lg mb-8">
-            Crianças e adolescentes de 8 a 15 anos das comunidades de Nilo Peçanha e Jatimane. Requisito: estar matriculado na escola com média mínima de 5,0.
+            Crianças e adolescentes de 7 a 17 anos das comunidades de Nilo Peçanha e Jatimane. Requisito: estar matriculado na escola com média mínima de 5,0.
           </p>
           <Link
             to="/matricula"

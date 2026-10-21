@@ -1,44 +1,33 @@
-// Backend do site Arco Íris — sem dependências externas (somente Node.js >= 18).
-// API REST + upload de arquivos + login de administrador + serve o front (dist/) em produção.
+// API REST, persistência no Supabase, upload de arquivos e login de administrador.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { entities } from './entities.js';
-import { Store } from './store.js';
 import { hashPassword, verifyPassword, signToken, verifyToken, loadSecret } from './auth.js';
+import { calcularCategoria, isIdadeDeMatriculaValida } from '../shared/athlete.js';
+import { createSupabaseClient, loadEnv, PRIVATE_BUCKET, PRIVATE_UPLOAD_PREFIX, PUBLIC_BUCKET } from './supabase.js';
+import { SupabaseStore } from './supabase-store.js';
+
+loadEnv();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
-// .env simples (sem dependência): lê KEY=VALUE da raiz do projeto
-function loadDotEnv() {
-  const file = path.join(ROOT, '.env');
-  if (!fs.existsSync(file)) return;
-  for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
-    if (!m || line.trim().startsWith('#')) continue;
-    const v = m[2].replace(/^(['"])(.*)\1$/, '$2');
-    if (process.env[m[1]] === undefined) process.env[m[1]] = v;
-  }
-}
-loadDotEnv();
-
 const PORT = Number(process.env.PORT || 3001);
 const DATA_DIR = path.resolve(ROOT, process.env.DATA_DIR || 'data');
-const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const DIST_DIR = path.join(ROOT, 'dist');
 const MAX_UPLOAD = Number(process.env.MAX_UPLOAD_MB || 25) * 1024 * 1024;
 const TRUST_PROXY = process.env.TRUST_PROXY === 'true';
 
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-const store = new Store(path.join(DATA_DIR, 'db.json'));
+let supabase;
+let store;
 const SECRET = loadSecret(DATA_DIR);
 
 // ---------- Administrador inicial ----------
-function seedAdmin() {
-  const users = store.table('User');
+async function seedAdmin() {
+  const users = await store.list('User');
   if (users.some((u) => u.role === 'admin')) return;
   const email = (process.env.ADMIN_EMAIL || 'admin@arcoiris.local').toLowerCase();
   let password = process.env.ADMIN_PASSWORD;
@@ -48,7 +37,7 @@ function seedAdmin() {
     generated = true;
   }
   const now = new Date().toISOString();
-  users.push({
+  await store.insert('User', {
     id: store.newId(),
     email,
     full_name: 'Administrador',
@@ -57,14 +46,12 @@ function seedAdmin() {
     created_date: now,
     updated_date: now,
   });
-  store.flush();
   console.log('\n[auth] Administrador criado.');
   console.log(`[auth]   e-mail: ${email}`);
   if (generated) console.log(`[auth]   senha (gerada, anote agora): ${password}`);
   else console.log('[auth]   senha: a definida em ADMIN_PASSWORD');
   console.log('[auth] Para trocar/criar admin depois: npm run create-admin -- email senha\n');
 }
-seedAdmin();
 
 // ---------- Utilitários ----------
 const publicUser = (u) => ({ id: u.id, email: u.email, full_name: u.full_name, role: u.role });
@@ -138,12 +125,12 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000).unref();
 
-function getUser(req) {
+async function getUser(req) {
   const h = req.headers.authorization || '';
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
   const data = verifyToken(token, SECRET);
   if (!data) return null;
-  return store.table('User').find((u) => u.id === data.sub) || null;
+  return store.get('User', data.sub);
 }
 
 const isAdmin = (user) => user?.role === 'admin';
@@ -226,31 +213,34 @@ const clean = (body) => {
   return out;
 };
 
-function createDoc(name, def, body, user) {
+async function createDoc(name, def, body, user) {
   let data = clean(body);
   if (!isAdmin(user) && def.forcePublicCreate) data = { ...data, ...def.forcePublicCreate };
   data = { ...(def.defaults || {}), ...data };
+  if (name === 'Athlete' && !isAdmin(user)) {
+    if (!isIdadeDeMatriculaValida(data.dataNascimento)) {
+      throw new HttpError(400, 'A matrícula é destinada a atletas de 7 a 17 anos completos.');
+    }
+    data.categoria = calcularCategoria(data.dataNascimento);
+  }
   validate(def, data, { partial: false });
   const now = new Date().toISOString();
-  const doc = { id: store.newId(), ...data, created_date: now, updated_date: now };
-  store.table(name).push(doc);
-  return doc;
+  return store.insert(name, { id: store.newId(), ...data, created_date: now, updated_date: now });
 }
 
 // ---------- Rotas da API ----------
 async function handleApi(req, res, url) {
   const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent); // ['api', ...]
   const method = req.method;
-  const user = getUser(req);
+  const user = await getUser(req);
 
   // --- Auth ---
   if (parts[1] === 'auth') {
     if (parts[2] === 'login' && method === 'POST') {
       rateLimit(`login:${clientIp(req)}`, 10, 15 * 60 * 1000);
       const { email, password } = await readJson(req);
-      const u = store
-        .table('User')
-        .find((x) => x.email === String(email || '').trim().toLowerCase());
+      const users = await store.list('User');
+      const u = users.find((x) => x.email === String(email || '').trim().toLowerCase());
       // verifica sempre uma senha (mesmo sem usuário) para não vazar existência por tempo
       const ok = verifyPassword(String(password || ''), u?.passwordHash || 'scrypt$00$00');
       if (!u || !ok) throw new HttpError(401, 'E-mail ou senha incorretos.');
@@ -281,20 +271,20 @@ async function handleApi(req, res, url) {
       if (!Array.isArray(records) || !Array.isArray(key) || !key.length) {
         throw new HttpError(400, 'Informe records[] e key[].');
       }
-      const table = store.table(name);
-      const out = records.map((rec) => {
+      const existingRecords = await store.list(name);
+      const out = [];
+      for (const rec of records) {
         const data = clean(rec);
-        const existing = table.find((d) => key.every((k) => String(d[k]) === String(data[k])));
+        const existing = existingRecords.find((d) => key.every((k) => String(d[k]) === String(data[k])));
         if (existing) {
           const merged = { ...existing, ...data };
           validate(def, merged, { partial: false });
-          Object.assign(existing, data, { updated_date: new Date().toISOString() });
-          return existing;
+          out.push(await store.update(name, existing.id, data));
+        } else {
+          out.push(await createDoc(name, def, data, user));
         }
-        return createDoc(name, def, data, user);
-      });
-      store.save();
-      return send(res, 200, out);
+      }
+      return send(res, 200, await presentDocs(out, user));
     }
 
     if (!id && method === 'GET') {
@@ -308,51 +298,45 @@ async function handleApi(req, res, url) {
         }
       }
       if (!isAdmin(user) && def.publicReadFilter) query = { ...query, ...def.publicReadFilter };
-      let docs = store.table(name).filter((d) => matches(d, query));
+      let docs = (await store.list(name)).filter((d) => matches(d, query));
       docs = sortDocs(
         [...docs],
         url.searchParams.get('sort') || '-created_date',
       );
       const limit = Number(url.searchParams.get('limit'));
       if (limit > 0) docs = docs.slice(0, limit);
-      return send(res, 200, docs);
+      return send(res, 200, await presentDocs(docs, user));
     }
 
     if (!id && method === 'POST') {
       if (!can(def, 'create', user)) throw forbid(user);
       if (!isAdmin(user)) rateLimit(`create:${name}:${clientIp(req)}`, 20, 3600 * 1000);
-      const doc = createDoc(name, def, await readJson(req), user);
-      store.save();
-      return send(res, 201, doc);
+      const doc = await createDoc(name, def, await readJson(req), user);
+      return send(res, 201, await presentDoc(doc, user));
     }
 
     if (id && method === 'GET') {
       if (!can(def, 'read', user)) throw forbid(user);
-      const doc = store.table(name).find((d) => d.id === id);
+      const doc = await store.get(name, id);
       if (!doc || (!isAdmin(user) && def.publicReadFilter && !matches(doc, def.publicReadFilter))) {
         throw new HttpError(404, 'Registro não encontrado.');
       }
-      return send(res, 200, doc);
+      return send(res, 200, await presentDoc(doc, user));
     }
 
     if (id && method === 'PUT') {
       if (!can(def, 'update', user)) throw forbid(user);
-      const doc = store.table(name).find((d) => d.id === id);
+      const doc = await store.get(name, id);
       if (!doc) throw new HttpError(404, 'Registro não encontrado.');
       const data = clean(await readJson(req));
       validate(def, data, { partial: true });
-      Object.assign(doc, data, { updated_date: new Date().toISOString() });
-      store.save();
-      return send(res, 200, doc);
+      const updated = await store.update(name, id, data);
+      return send(res, 200, await presentDoc(updated, user));
     }
 
     if (id && method === 'DELETE') {
       if (!can(def, 'delete', user)) throw forbid(user);
-      const table = store.table(name);
-      const i = table.findIndex((d) => d.id === id);
-      if (i === -1) throw new HttpError(404, 'Registro não encontrado.');
-      table.splice(i, 1);
-      store.save();
+      if (!await store.delete(name, id)) throw new HttpError(404, 'Registro não encontrado.');
       return send(res, 200, { success: true });
     }
   }
@@ -374,7 +358,6 @@ const MIME = {
 function handleUpload(req, res, user) {
   return new Promise((resolve, reject) => {
     try {
-      // visitantes só enviam arquivos para a matrícula: limite por IP
       if (!isAdmin(user)) rateLimit(`upload:${clientIp(req)}`, 30, 3600 * 1000);
 
       let rawName = 'arquivo';
@@ -389,40 +372,76 @@ function handleUpload(req, res, user) {
         throw new HttpError(413, `Arquivo maior que ${MAX_UPLOAD / 1024 / 1024} MB.`);
       }
 
+      const visibility = String(req.headers['x-file-visibility'] || (isAdmin(user) ? 'public' : 'private'));
+      if (!['public', 'private'].includes(visibility)) {
+        throw new HttpError(400, 'Visibilidade de arquivo inválida.');
+      }
+      if (!isAdmin(user) && visibility !== 'private') {
+        throw new HttpError(403, 'Visitantes só podem enviar documentos privados de matrícula.');
+      }
+      const bucket = visibility === 'private' ? PRIVATE_BUCKET : PUBLIC_BUCKET;
       const fileName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`;
-      const dest = path.join(UPLOAD_DIR, fileName);
-      const out = fs.createWriteStream(dest, { flags: 'wx' });
       let size = 0;
-      let aborted = false;
-
-      const fail = (err) => {
-        if (aborted) return;
-        aborted = true;
-        out.destroy();
-        fs.rm(dest, { force: true }, () => {});
-        reject(err);
-      };
+      const chunks = [];
 
       req.on('data', (chunk) => {
         size += chunk.length;
         if (size > MAX_UPLOAD) {
-          fail(new HttpError(413, `Arquivo maior que ${MAX_UPLOAD / 1024 / 1024} MB.`));
+          reject(new HttpError(413, `Arquivo maior que ${MAX_UPLOAD / 1024 / 1024} MB.`));
           req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('error', reject);
+      req.on('end', async () => {
+        try {
+          if (size === 0) throw new HttpError(400, 'Arquivo vazio.');
+          const { error } = await supabase.storage.from(bucket).upload(fileName, Buffer.concat(chunks), {
+            contentType: MIME[ext],
+            upsert: false,
+          });
+          if (error) throw new HttpError(502, `Falha ao salvar arquivo no Supabase: ${error.message}`);
+          const fileUrl = visibility === 'private'
+            ? `${PRIVATE_UPLOAD_PREFIX}${fileName}`
+            : supabase.storage.from(bucket).getPublicUrl(fileName).data.publicUrl;
+          send(res, 201, { file_url: fileUrl, file_name: rawName, size });
+          resolve();
+        } catch (error) {
+          reject(error);
         }
       });
-      req.on('error', fail);
-      out.on('error', fail);
-      out.on('finish', () => {
-        if (aborted) return;
-        if (size === 0) return fail(new HttpError(400, 'Arquivo vazio.'));
-        send(res, 201, { file_url: `/uploads/${fileName}`, file_name: rawName, size });
-        resolve();
-      });
-      req.pipe(out);
     } catch (e) {
       reject(e);
     }
   });
+}
+
+async function presentValue(value, user) {
+  if (typeof value === 'string' && value.startsWith(PRIVATE_UPLOAD_PREFIX)) {
+    if (!isAdmin(user)) return null;
+    const filePath = value.slice(PRIVATE_UPLOAD_PREFIX.length);
+    const { data, error } = await supabase.storage
+      .from(PRIVATE_BUCKET)
+      .createSignedUrl(filePath, 3600);
+    if (error) throw new HttpError(502, `Falha ao gerar link privado: ${error.message}`);
+    return data.signedUrl;
+  }
+  if (Array.isArray(value)) return Promise.all(value.map((item) => presentValue(item, user)));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      await Promise.all(Object.entries(value).map(async ([key, item]) => [key, await presentValue(item, user)])),
+    );
+  }
+  return value;
+}
+
+async function presentDoc(doc, user) {
+  return presentValue(doc, user);
+}
+
+async function presentDocs(docs, user) {
+  return Promise.all(docs.map((doc) => presentDoc(doc, user)));
 }
 
 function serveFile(req, res, file, { immutable = false } = {}) {
@@ -495,14 +514,6 @@ const server = http.createServer(async (req, res) => {
       throw new HttpError(405, 'Método não permitido.');
     }
 
-    if (url.pathname.startsWith('/uploads/')) {
-      const name = path.basename(decodeURIComponent(url.pathname));
-      const file = path.join(UPLOAD_DIR, name);
-      if (within(UPLOAD_DIR, file) && serveFile(req, res, file, { immutable: true })) return;
-      res.writeHead(404);
-      return res.end('Arquivo não encontrado');
-    }
-
     // Front-end compilado (produção)
     if (fs.existsSync(DIST_DIR)) {
       const rel = decodeURIComponent(url.pathname);
@@ -525,14 +536,17 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-function shutdown() {
-  store.flush();
-  process.exit(0);
+async function start() {
+  supabase = createSupabaseClient();
+  store = new SupabaseStore(supabase);
+  await seedAdmin();
+  server.listen(PORT, () => {
+    console.log(`[server] API rodando em http://localhost:${PORT}`);
+    console.log('[server] Banco de dados e arquivos no Supabase.');
+  });
 }
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
 
-server.listen(PORT, () => {
-  console.log(`[server] API rodando em http://localhost:${PORT}`);
-  console.log(`[server] Dados em ${DATA_DIR}`);
+start().catch((error) => {
+  console.error('[server] Falha ao inicializar o Supabase:', error.message);
+  process.exitCode = 1;
 });

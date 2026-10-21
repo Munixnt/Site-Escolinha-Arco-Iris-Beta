@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/api/client';
-import { calcularCategoria, gerarNumeroMatricula } from '@/utils/athleteUtils';
+import { calcularCategoria, calcularIdade, gerarNumeroMatricula, isIdadeDeMatriculaValida } from '@/utils/athleteUtils';
 import { Upload, CheckCircle, AlertCircle, Loader2, User, FileText, Shield } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,13 +56,15 @@ export default function Matricula() {
   const [atestadoFile, setAtestadoFile] = useState(null);
 
   const categoria = form.dataNascimento ? calcularCategoria(form.dataNascimento) : '—';
-  const idade = form.dataNascimento ?
-  Math.floor((new Date() - new Date(form.dataNascimento)) / (365.25 * 24 * 3600 * 1000)) :
-  '—';
+  const idade = form.dataNascimento ? calcularIdade(form.dataNascimento) : '—';
 
   const updateForm = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
   const handleSubmit = async () => {
+    if (!isIdadeDeMatriculaValida(form.dataNascimento)) {
+      setError('A matrícula é destinada a atletas de 7 a 17 anos completos.');
+      return;
+    }
     if (!form.consentimentoLGPD) {
       setError('Você deve aceitar os Termos de Consentimento LGPD para prosseguir.');
       return;
@@ -76,7 +78,7 @@ export default function Matricula() {
     setError('');
 
     const uploadFile = async (file) => {
-      const { file_url } = await api.integrations.Core.UploadFile({ file });
+      const { file_url } = await api.integrations.Core.UploadFile({ file, visibility: 'private' });
       return file_url;
     };
 
@@ -180,6 +182,7 @@ export default function Matricula() {
               <div>
                 <Label className="font-montserrat font-semibold text-gray-700 text-sm">Data de Nascimento *</Label>
                 <Input className="mt-2" type="date" value={form.dataNascimento} onChange={(e) => updateForm('dataNascimento', e.target.value)} />
+                <p className="text-gray-500 text-xs mt-1">Matrículas para atletas de 7 a 17 anos completos.</p>
               </div>
               <div>
                 <Label className="font-montserrat font-semibold text-gray-700 text-sm">Tipo Sanguíneo</Label>
@@ -200,9 +203,23 @@ export default function Matricula() {
                 </div>
               </div>
           }
+            {form.dataNascimento && !isIdadeDeMatriculaValida(form.dataNascimento) &&
+          <p className="mt-3 text-sm text-red-700" role="alert">A idade deve estar entre 7 e 17 anos completos para realizar a matrícula.</p>
+          }
             <div className="flex justify-end mt-6">
               <Button
-              onClick={() => {if (!form.nome || !form.dataNascimento) {setError('Preencha nome e data de nascimento.');return;}setError('');setStep(2);}}
+              onClick={() => {
+                if (!form.nome || !form.dataNascimento) {
+                  setError('Preencha nome e data de nascimento.');
+                  return;
+                }
+                if (!isIdadeDeMatriculaValida(form.dataNascimento)) {
+                  setError('A matrícula é destinada a atletas de 7 a 17 anos completos.');
+                  return;
+                }
+                setError('');
+                setStep(2);
+              }}
               className="bg-burgundy hover:bg-red-900 text-white font-montserrat font-bold px-8">
               
                 Próximo

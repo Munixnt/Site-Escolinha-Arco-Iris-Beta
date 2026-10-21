@@ -3,8 +3,9 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { Store } from './store.js';
 import { hashPassword } from './auth.js';
+import { createSupabaseClient } from './supabase.js';
+import { SupabaseStore } from './supabase-store.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const envFile = path.join(ROOT, '.env');
@@ -27,20 +28,21 @@ if (password.length < 8) {
   process.exit(1);
 }
 
-const dataDir = path.resolve(ROOT, process.env.DATA_DIR || 'data');
-const store = new Store(path.join(dataDir, 'db.json'));
-const users = store.table('User');
 const normalized = email.trim().toLowerCase();
 const now = new Date().toISOString();
-const existing = users.find((u) => u.email === normalized);
 
-if (existing) {
-  existing.passwordHash = hashPassword(password);
-  existing.role = 'admin';
-  existing.updated_date = now;
-  console.log(`Senha redefinida para ${normalized}.`);
-} else {
-  users.push({
+async function saveAdmin() {
+  const store = new SupabaseStore(createSupabaseClient());
+  const users = await store.list('User');
+  const existing = users.find((u) => u.email === normalized);
+
+  if (existing) {
+    await store.update('User', existing.id, { passwordHash: hashPassword(password), role: 'admin' });
+    console.log(`Senha redefinida para ${normalized}.`);
+    return;
+  }
+
+  await store.insert('User', {
     id: store.newId(),
     email: normalized,
     full_name: nameParts.join(' ') || 'Administrador',
@@ -51,4 +53,8 @@ if (existing) {
   });
   console.log(`Administrador ${normalized} criado.`);
 }
-store.flush();
+
+saveAdmin().catch((error) => {
+  console.error('[create-admin] Falha ao salvar administrador no Supabase:', error.message);
+  process.exitCode = 1;
+});

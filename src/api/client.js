@@ -80,7 +80,7 @@ const entities = new Proxy({}, {
   },
 });
 
-async function uploadFile({ file }) {
+async function uploadFile({ file, visibility = 'public' }) {
   if (!file) throw new Error('Nenhum arquivo selecionado.');
   const data = await request('/api/upload', {
     method: 'POST',
@@ -88,6 +88,7 @@ async function uploadFile({ file }) {
     body: file,
     headers: {
       'X-File-Name': encodeURIComponent(file.name || 'arquivo'),
+      'X-File-Visibility': visibility,
       'Content-Type': file.type || 'application/octet-stream',
     },
   });
