@@ -1,11 +1,5 @@
 export { calcularCategoria, calcularIdade, isIdadeDeMatriculaValida } from '../../shared/athlete.js';
 
-export function gerarNumeroMatricula() {
-  const ano = new Date().getFullYear();
-  const rand = Math.floor(Math.random() * 9000) + 1000;
-  return `AI${ano}${rand}`;
-}
-
 export const categoriaColors = {
   'Sub-7': 'bg-pink-100 text-pink-800',
   'Sub-9': 'bg-purple-100 text-purple-800',

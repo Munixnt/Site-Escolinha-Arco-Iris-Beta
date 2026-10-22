@@ -218,6 +218,10 @@ async function createDoc(name, def, body, user) {
   if (!isAdmin(user) && def.forcePublicCreate) data = { ...data, ...def.forcePublicCreate };
   data = { ...(def.defaults || {}), ...data };
   if (name === 'Athlete' && !isAdmin(user)) {
+    const registrationSettings = await store.list('RegistrationSettings');
+    if (registrationSettings.some((setting) => setting.slug === 'matricula' && setting.accepting === false)) {
+      throw new HttpError(403, 'Matrículas suspensas no momento. Entre em contato com a Escolinha para mais informações.');
+    }
     if (!isIdadeDeMatriculaValida(data.dataNascimento)) {
       throw new HttpError(400, 'A matrícula é destinada a atletas de 7 a 17 anos completos.');
     }

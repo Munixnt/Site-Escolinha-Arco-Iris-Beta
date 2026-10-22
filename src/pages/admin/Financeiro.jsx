@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
-import { DollarSign, AlertTriangle, CheckCircle, Clock, Loader2, Save } from 'lucide-react';
+import { DollarSign, AlertTriangle, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { MESES, paymentStatusColors } from '@/utils/athleteUtils';
 
 const ANOS = [2024, 2025, 2026, 2027];

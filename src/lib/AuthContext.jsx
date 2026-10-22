@@ -1,18 +1,30 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { api, tokenStore } from '@/api/client';
+import { api } from '@/api/client';
 
-const AuthContext = createContext();
+/**
+ * @typedef {{ id: string, email: string | undefined, full_name: string | undefined, role: string }} AuthUser
+ * @typedef {{
+ *   user: AuthUser | null,
+ *   isAuthenticated: boolean,
+ *   isLoadingAuth: boolean,
+ *   authChecked: boolean,
+ *   login: (email: string, password: string) => Promise<AuthUser>,
+ *   logout: (shouldRedirect?: boolean) => Promise<void>,
+ *   navigateToLogin: () => void,
+ *   checkUserAuth: () => Promise<void>
+ * }} AuthContextValue
+ * @type {React.Context<AuthContextValue | null>}
+ */
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  // Só há o que carregar se existir um token salvo; visitantes do site público não esperam nada.
-  const [isLoadingAuth, setIsLoadingAuth] = useState(() => !!tokenStore.get());
-  const [authChecked, setAuthChecked] = useState(() => !tokenStore.get());
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const checkUserAuth = useCallback(async () => {
     try {
-      setIsLoadingAuth(true);
       const currentUser = await api.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
@@ -26,7 +38,20 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (tokenStore.get()) checkUserAuth();
+    const { data: { subscription } } = api.auth.onAuthStateChange((_event, session) => {
+      const sessionUser = session?.user;
+      setUser(sessionUser ? {
+        id: sessionUser.id,
+        email: sessionUser.email,
+        full_name: sessionUser.user_metadata?.full_name || sessionUser.email,
+        role: sessionUser.app_metadata?.role === 'admin' ? 'admin' : 'user',
+      } : null);
+      setIsAuthenticated(Boolean(sessionUser));
+      setIsLoadingAuth(false);
+      setAuthChecked(true);
+    });
+    checkUserAuth();
+    return () => subscription.unsubscribe();
   }, [checkUserAuth]);
 
   const login = async (email, password) => {
@@ -37,10 +62,10 @@ export const AuthProvider = ({ children }) => {
     return loggedUser;
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = async (shouldRedirect = true) => {
+    await api.auth.logout(shouldRedirect ? '/' : undefined);
     setUser(null);
     setIsAuthenticated(false);
-    api.auth.logout(shouldRedirect ? '/' : undefined);
   };
 
   const navigateToLogin = () => {

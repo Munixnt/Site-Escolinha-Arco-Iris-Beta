@@ -4,16 +4,10 @@ import { Plus, Trash2, Loader2, Megaphone, MessageCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { createWhatsAppLink } from '@/utils/whatsapp';
 
 const CATEGORIAS = ['Sub-7', 'Sub-9', 'Sub-11', 'Sub-13', 'Sub-15', 'Sub-17', 'Adulto'];
 const ASSINATURA = 'Associação Escolinha de Futebol Arco-Íris';
-
-function waLink(phone, message) {
-  const digits = (phone || '').replace(/\D/g, '');
-  if (digits.length < 10) return null;
-  const full = digits.startsWith('55') ? digits : `55${digits}`;
-  return `https://wa.me/${full}?text=${encodeURIComponent(message)}`;
-}
 
 export default function Avisos() {
   const [avisos, setAvisos] = useState([]);
@@ -166,7 +160,7 @@ export default function Avisos() {
               ) : (
                 <div className="space-y-2">
                   {responsaveis.map((a) => {
-                    const link = waLink(a.telefoneResponsavel, mensagem);
+                    const link = createWhatsAppLink(a.telefoneResponsavel, mensagem);
                     return (
                       <div key={a.id} className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg">
                         <div className="flex-1 min-w-0">

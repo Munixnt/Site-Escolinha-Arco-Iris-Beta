@@ -15,18 +15,12 @@ const FEATURES = [
 { icon: Trophy, title: 'Metodologia Estruturada', desc: 'Treinos tematizados com fundamentos básicos (7-17 anos), derivados e específicos (12-17 anos), desenvolvendo o atleta completo.' },
 { icon: Heart, title: 'Comunidade e Família', desc: 'Atendemos crianças e adolescentes de Nilo Peçanha e Comunidades, fortalecendo o convívio social e familiar.' }];
 
-
 export default function Home() {
   return (
     <div className="font-roboto">
       {/* HERO */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
-          
-
-
-          
-          
           <div className="absolute inset-0 hero-overlay" />
         </div>
 
@@ -40,12 +34,12 @@ export default function Home() {
           <p className="font-montserrat font-semibold text-gold text-sm uppercase tracking-widest mb-2">
             <EditableText field="hero.eyebrow">Escolinha de Futebol</EditableText>
           </p>
-          <h1 className="font-montserrat font-black text-white text-5xl md:text-7xl leading-none mb-3"><EditableText field="hero.title">ARCO íRIS</EditableText>
-
+          <h1 className="font-montserrat font-black text-white text-5xl md:text-7xl leading-none mb-3">
+            <EditableText field="hero.title">ARCO íRIS</EditableText>
           </h1>
           <div className="w-24 h-1 bg-gold mx-auto mb-6" />
-          <p className="font-montserrat font-bold text-gold text-xl md:text-2xl mb-2 italic"><EditableText field="hero.project">"Projeto: Fazendo Hoje Para Refletir no Amanhã - Parte III"</EditableText>
-
+          <p className="font-montserrat font-bold text-gold text-xl md:text-2xl mb-2 italic">
+            <EditableText field="hero.project">"Projeto: Fazendo Hoje Para Refletir no Amanhã - Parte III"</EditableText>
           </p>
           <p className="text-white/80 text-base md:text-lg mb-10 font-roboto">
             <EditableText field="hero.description">OSC fundada em 13 de agosto de 2017 em Nilo Peçanha-BA. Transformando vidas através do futebol nas comunidades do Baixo Sul da Bahia.</EditableText>
@@ -54,13 +48,11 @@ export default function Home() {
             <Link
               to="/matricula"
               className="px-8 py-4 bg-gold text-burgundy font-montserrat font-black text-lg rounded-lg hover:bg-yellow-400 transition-all shadow-lg flex items-center gap-2 justify-center">
-              
               <EditableText field="hero.enroll">Faça sua Matrícula</EditableText> <ArrowRight size={20} />
             </Link>
             <Link
               to="/historia"
               className="px-8 py-4 border-2 border-white text-white font-montserrat font-bold text-lg rounded-lg hover:bg-white hover:text-burgundy transition-all">
-              
               <EditableText field="hero.history">Nossa História</EditableText>
             </Link>
           </div>

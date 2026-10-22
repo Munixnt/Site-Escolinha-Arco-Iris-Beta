@@ -1,105 +1,75 @@
-# Arco Íris — site e painel administrativo
+# Arco Íris — site estático com painel no Supabase
 
-Site público + painel admin (atletas, financeiro, frequência, escalações, galeria, transparência, avisos).
-**Sem dependência do Base44**: o front (React + Vite) conversa com um backend próprio em Node.js que está na pasta `server/`.
+O projeto compila as páginas em arquivos estáticos para hospedagem compartilhada, como HostGator. O navegador acessa o Supabase diretamente para autenticação, banco e arquivos; não é necessário manter Node.js ou uma VPS em produção. A interface existente é compilada pelo Vite, portanto os arquivos HTML, CSS e JavaScript ficam prontos na pasta `dist/`.
 
-## Como rodar (desenvolvimento)
+## Preparar o Supabase
 
-Requisitos: Node.js 18.17 ou superior.
+1. No Supabase, abra o **SQL Editor** e execute [`supabase/static-host-schema.sql`](./supabase/static-host-schema.sql). O script cria/configura `app_records`, as políticas RLS e os buckets de arquivos.
+2. Em **Project Settings → API**, copie a **Project URL** e a **publishable key** (ou a antiga `anon` key). Nunca use `secret`/`service_role` no navegador.
+3. Crie a conta do administrador em **Authentication → Users → Add user**. A senha do antigo login próprio não pode ser reaproveitada: crie uma senha nova no Supabase.
+4. No SQL Editor, conceda a função administrativa a essa conta, substituindo o e-mail:
 
-```bash
-npm install
-cp .env.example .env        # Windows: copy .env.example .env
-npm run dev
-```
+   ```sql
+   update auth.users
+   set raw_app_meta_data =
+     coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
+   where lower(email) = lower('admin@seudominio.com');
+   ```
 
-- Configure `SUPABASE_URL`, `SUPABASE_SECRET_KEY` e um `JWT_SECRET` estável no `.env`.
-- `SUPABASE_PUBLISHABLE_KEY` não dá acesso de escrita ao backend; nunca use a secret/service-role key no front-end ou no Git.
-- Site: http://localhost:5173
-- API: http://localhost:3001 (o Vite redireciona `/api` para ela)
-- Painel: http://localhost:5173/login
+   Confirme que uma linha foi atualizada. Depois, saia e entre novamente no painel para receber as permissões atualizadas.
+5. Em **Authentication → URL Configuration**, configure o domínio do site em **Site URL** e adicione o mesmo domínio em **Redirect URLs**.
 
-Antes de iniciar, execute [supabase/schema.sql](./supabase/schema.sql) no SQL Editor do Supabase. Ele cria a tabela `app_records` com RLS habilitado e os buckets `public-assets` e `athlete-documents`.
+As políticas RLS permitem ao público ler apenas conteúdo publicado, enviar matrículas pendentes e carregar documentos de matrícula para o bucket privado. Os outros registros e arquivos exigem uma sessão cujo `app_metadata.role` seja `admin`. Não atribua essa função pelo navegador. A matrícula pública exige endereço completo, tipo sanguíneo, declaração de alergias/restrições e status do atestado. O Supabase gera o número de matrícula no formato `AI-AAAA-CATEGORIA-SEQUENCIAL`, com sequência atômica por ano/categoria e índice único. Administradores podem suspender ou reabrir matrículas na tela **Atletas**; quando suspensas, o formulário informa os contatos da escolinha e o backend também bloqueia novos envios. Para aplicar ou atualizar essas regras, execute o arquivo SQL completo no SQL Editor antes de publicar o novo frontend.
 
-Na primeira execução é criado no Supabase um administrador com `ADMIN_EMAIL`/`ADMIN_PASSWORD` do `.env`. Se `ADMIN_PASSWORD` estiver vazio, uma senha aleatória aparece no terminal (anote).
+## Compilar e publicar no HostGator
 
-Criar outro admin ou redefinir uma senha:
+Requisitos para compilar: Node.js 18.17 ou superior.
 
-```bash
-npm run create-admin -- email@exemplo.com SenhaComPeloMenos8 "Nome"
-```
+1. Crie `/.env.production.local` com as chaves públicas do projeto Supabase:
 
-## Migrar os dados locais para o Supabase
+   ```env
+   VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+   VITE_SUPABASE_PUBLISHABLE_KEY=sua_chave_publica
+   ```
 
-Com o schema criado e `SUPABASE_SECRET_KEY` configurada no `.env`, execute:
+   Essas duas chaves são públicas por definição; o acesso é protegido pelas políticas RLS. **Não** coloque `SUPABASE_SECRET_KEY`, `service_role`, senhas ou segredos em variáveis `VITE_`.
+2. Na pasta do projeto, execute:
+
+   ```bash
+   npm install
+   npm run build
+   ```
+
+3. Envie **o conteúdo** de `dist/` (incluindo `.htaccess`) para a pasta raiz do domínio no HostGator, normalmente `public_html/`. Se usar FTP, habilite a visualização de arquivos ocultos para enviar `.htaccess`.
+4. Ative HTTPS no domínio. As rotas do painel (`/login`, `/admin/...`) usam o fallback Apache em `public/.htaccess`, copiado automaticamente para `dist/`.
+
+Não envie `.env*`, `node_modules/`, `data/` ou a pasta completa do projeto para `public_html`. Quando alterar o site ou as chaves, gere outro build e envie novamente o conteúdo de `dist/`.
+
+## Dados e arquivos existentes
+
+Se o banco já está no Supabase, o script de hospedagem estática conserva a tabela `app_records`; ele adiciona as regras necessárias para acesso direto do navegador. Confira e faça backup dos dados antes de alterar políticas ou buckets.
+
+Se os dados ainda estiverem em `data/db.json`, os scripts legados de migração podem ser executados em uma máquina local confiável, com `SUPABASE_URL` e `SUPABASE_SECRET_KEY` em `.env`:
 
 ```bash
 npm run migrate-data
 ```
 
-O comando transfere registros de `data/db.json`, inclusive o administrador existente, preserva IDs e envia arquivos de `data/uploads`. É idempotente: IDs que já existirem no Supabase não são sobrescritos. Documentos e fotos dos atletas ficam no bucket privado; os demais arquivos ficam no bucket público. O comando não apaga nem altera os dados locais — mantenha a pasta `data/` como backup até confirmar a migração.
+Não publique o arquivo `.env`. Os registros `User` antigos guardam senhas em formato próprio e não autenticam no Supabase Auth: crie uma conta administrativa nova seguindo os passos acima.
 
-## Logo do site (passo manual obrigatório)
+## Desenvolvimento local
 
-O logo estava hospedado no Base44. Salve-o como `public/logo.jpeg` **enquanto o link ainda funciona**:
-
-```bash
-curl -L -o public/logo.jpeg "https://media.base44.com/images/public/user_6a0878cfca0239b00e85500e/fa92b9223_WhatsAppImage2026-05-23at172425.jpeg"
-```
-
-(ou copie o arquivo original do logo para `public/logo.jpeg`).
-
-## Migrar os dados que já estão no Base44
-
-1. No painel do Base44, exporte cada entidade (Athlete, Payment, Attendance, Sponsor, TimelineEvent, GalleryAlbum, GalleryItem, TransparencyDocument, Aviso, Lineup) em CSV ou JSON.
-2. Importe uma por uma (os `id` originais são mantidos, então os vínculos entre atleta/pagamento/frequência continuam valendo):
+Para testar o site estático localmente, configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` em `.env.local`, depois execute:
 
 ```bash
-npm run import-data -- Athlete caminho/Athlete.csv
-npm run import-data -- Payment caminho/Payment.csv
-# ...e assim por diante
+npm install
+npm run dev:client
 ```
 
-3. Os arquivos já enviados (fotos, RG, atestados, logos, PDFs) ainda apontam para o Base44. Baixe-os para o seu servidor e reescreva as URLs:
+`npm run dev` e `npm start` continuam disponíveis para o servidor Node legado e não são necessários para a hospedagem estática.
 
-```bash
-npm run localize-files -- --dry-run   # só lista o que seria migrado
-npm run localize-files
-```
+## Limites do acesso público
 
-Faça o passo 3 enquanto sua conta/app no Base44 ainda estiver ativa. Rode o `import-data` só uma vez por arquivo (registros sem `id` seriam duplicados).
+O formulário público pode criar apenas matrículas pendentes dentro da faixa etária permitida; dados de atletas, financeiro e painel não ficam disponíveis para visitantes. Os documentos de matrícula são privados e os links temporários só são gerados após autenticação administrativa. O limite de upload configurado é 25 MB.
 
-## Produção
-
-```bash
-npm run build
-npm start                    # um único processo serve o site (dist/) + API + uploads
-```
-
-Defina no ambiente: `PORT`, `JWT_SECRET` (valor longo e aleatório), `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
-Se usar proxy reverso (Nginx, Cloudflare etc.), use HTTPS e defina `TRUST_PROXY=true`.
-
-Configure `SUPABASE_URL`, `SUPABASE_SECRET_KEY` e um `JWT_SECRET` estável também no ambiente de produção. A chave secreta do Supabase só deve existir no servidor.
-
-**Backup:** os registros e uploads ficam no Supabase. Use os backups do projeto Supabase e mantenha uma cópia da pasta `data/` local durante e depois da migração como backup independente.
-
-## O que mudou em relação ao Base44
-
-| Antes | Agora |
-|---|---|
-| `@base44/sdk`, `@base44/vite-plugin` | removidos |
-| `base44.entities.X...` | `api.entities.X...` (`src/api/client.js`, mesma interface) |
-| Login/SSO do Base44 | Login por e-mail e senha em `/login` |
-| `base44.integrations.Core.UploadFile` | upload via backend para Supabase Storage |
-| Banco local JSON | Supabase Postgres (`app_records`) |
-| Regras `rls` das entidades | `server/entities.js` |
-
-Permissões (`server/entities.js`):
-- Público pode **ler** patrocinadores ativos, galeria, linha do tempo e documentos de transparência ativos, e **criar** matrícula (sempre salva como `pendente`).
-- Todo o resto (atletas, financeiro, frequência, avisos, escalações e qualquer alteração) exige login de admin.
-
-## Arquivos e permissões
-
-- Uploads aceitam imagens, PDF, vídeo (mp4/webm/mov) e documentos Office/txt, até 25 MB (`MAX_UPLOAD_MB`). SVG e HTML são bloqueados de propósito.
-- `public-assets` contém arquivos públicos do site. `athlete-documents` é privado e os links temporários só são emitidos para administradores autenticados.
-- A tabela `app_records` não tem políticas públicas de RLS; somente o backend, usando a chave secreta, acessa os dados. Mantenha essa chave exclusivamente no servidor.
+A hospedagem estática não executa o rate limit por IP do servidor legado. Antes de divulgar amplamente o formulário de matrícula, monitore o uso do Supabase e considere proteção anti-spam (por exemplo, CAPTCHA ou uma Supabase Edge Function com rate limit). A chave secreta do Supabase nunca deve ser colocada no site.

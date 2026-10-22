@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { Link } from 'react-router-dom';
-import { Search, Filter, UserPlus, Eye } from 'lucide-react';
+import { Search, Filter, UserPlus, Eye, PauseCircle, PlayCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { categoriaColors, statusColors } from '@/utils/athleteUtils';
+import { Button } from '@/components/ui/button';
 
 const CATEGORIAS = ['Todas', 'Sub-7', 'Sub-9', 'Sub-11', 'Sub-13', 'Sub-15', 'Sub-17', 'Adulto'];
 const STATUS = ['Todos', 'pendente', 'ativo', 'inativo'];
@@ -15,13 +16,37 @@ export default function Atletas() {
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('Todas');
   const [statusFilter, setStatusFilter] = useState('Todos');
+  const [registrationSetting, setRegistrationSetting] = useState(null);
+  const [registrationLoading, setRegistrationLoading] = useState(true);
+  const [registrationSaving, setRegistrationSaving] = useState(false);
+  const [registrationError, setRegistrationError] = useState('');
 
   useEffect(() => {
     api.entities.Athlete.list('-created_date').then(data => {
       setAthletes(data);
       setLoading(false);
     });
+    api.entities.RegistrationSettings.filter({ slug: 'matricula' }, null, 1)
+      .then(([setting]) => setRegistrationSetting(setting || null))
+      .catch(error => setRegistrationError(error.message || 'Não foi possível carregar as configurações de matrícula.'))
+      .finally(() => setRegistrationLoading(false));
   }, []);
+
+  const toggleRegistration = async () => {
+    setRegistrationSaving(true);
+    setRegistrationError('');
+    const nextSetting = { slug: 'matricula', accepting: registrationSetting?.accepting === false };
+    try {
+      const [savedSetting] = await api.entities.RegistrationSettings.upsert([nextSetting], { key: ['slug'] });
+      setRegistrationSetting(savedSetting);
+    } catch (error) {
+      setRegistrationError(error.message || 'Não foi possível atualizar a situação das matrículas.');
+    } finally {
+      setRegistrationSaving(false);
+    }
+  };
+
+  const acceptingRegistrations = registrationSetting?.accepting !== false;
 
   const filtered = athletes.filter(a => {
     const matchSearch = a.nome?.toLowerCase().includes(search.toLowerCase());
@@ -38,6 +63,36 @@ export default function Atletas() {
           <p className="text-gray-500 mt-1">{athletes.length} atletas cadastrados</p>
         </div>
       </div>
+
+      <section className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-montserrat font-bold text-gray-800">Matrículas online</h2>
+            {registrationLoading ? (
+              <p className="mt-1 text-sm text-gray-500">Carregando situação...</p>
+            ) : (
+              <p className={`mt-1 text-sm font-medium ${acceptingRegistrations ? 'text-green-700' : 'text-amber-700'}`}>
+                {acceptingRegistrations ? 'Aceitando novas matrículas' : 'Matrículas suspensas'}
+              </p>
+            )}
+          </div>
+          <Button
+            type="button"
+            onClick={toggleRegistration}
+            disabled={registrationLoading || registrationSaving || Boolean(registrationError)}
+            variant={acceptingRegistrations ? 'destructive' : 'default'}
+            className={!acceptingRegistrations ? 'bg-green-600 text-white hover:bg-green-700' : ''}
+          >
+            {registrationSaving || registrationLoading
+              ? <Loader2 size={16} className="animate-spin" />
+              : acceptingRegistrations ? <PauseCircle size={16} /> : <PlayCircle size={16} />}
+            {acceptingRegistrations ? 'Suspender matrículas' : 'Aceitar matrículas'}
+          </Button>
+        </div>
+        {registrationError && (
+          <p role="alert" className="mt-3 text-sm text-red-700">{registrationError}</p>
+        )}
+      </section>
 
       {/* Filtros */}
       <div className="flex flex-col md:flex-row gap-3 mb-6">

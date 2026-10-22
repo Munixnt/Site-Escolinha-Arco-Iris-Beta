@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
-import { Users, DollarSign, AlertTriangle, Clock, TrendingUp, CheckCircle } from 'lucide-react';
+import { Users, AlertTriangle, Clock, TrendingUp, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { MESES, categoriaColors } from '@/utils/athleteUtils';
 

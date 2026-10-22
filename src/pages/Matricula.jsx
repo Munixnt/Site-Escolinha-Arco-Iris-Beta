@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '@/api/client';
-import { calcularCategoria, calcularIdade, gerarNumeroMatricula, isIdadeDeMatriculaValida } from '@/utils/athleteUtils';
-import { Upload, CheckCircle, AlertCircle, Loader2, User, FileText, Shield } from 'lucide-react';
+import { calcularCategoria, calcularIdade, isIdadeDeMatriculaValida } from '@/utils/athleteUtils';
+import { Upload, CheckCircle, AlertCircle, Loader2, User, FileText, Shield, Phone, Mail } from 'lucide-react';
 import { EditableText } from '@/components/layout/SiteEditor';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { createWhatsAppLink } from '@/utils/whatsapp';
 
 const TIPO_SANGUINEO = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const CONTACT_PHONE = '73998518813';
+const CONTACT_EMAIL = 'erisvaldomarques18@gmail.com';
 
 function UploadField({ label, id, accept, file, onChange, required }) {
   return (
@@ -45,15 +48,25 @@ export default function Matricula() {
   const [success, setSuccess] = useState(false);
   const [protocolo, setProtocolo] = useState('');
   const [error, setError] = useState('');
+  const [acceptingRegistrations, setAcceptingRegistrations] = useState(null);
+  const [settingsError, setSettingsError] = useState('');
+
+  useEffect(() => {
+    api.entities.RegistrationSettings.filter({ slug: 'matricula' }, null, 1)
+      .then(([setting]) => setAcceptingRegistrations(setting?.accepting !== false))
+      .catch((settingsLoadError) => setSettingsError(settingsLoadError.message || 'Não foi possível verificar a disponibilidade das matrículas.'));
+  }, []);
 
   const [form, setForm] = useState({
-    nome: '', dataNascimento: '', tipoSanguineo: '',
+    nome: '', dataNascimento: '', tipoSanguineo: '', alergiasRestricoes: '',
     nomeResponsavel: '', telefoneResponsavel: '',
     cep: '', rua: '', numero: '', bairro: '', cidade: '', estado: '',
+    statusAtestado: '',
     consentimentoLGPD: false
   });
   const [fotoFile, setFotoFile] = useState(null);
   const [rgFile, setRgFile] = useState(null);
+  const [rgVersoFile, setRgVersoFile] = useState(null);
   const [atestadoFile, setAtestadoFile] = useState(null);
 
   const categoria = form.dataNascimento ? calcularCategoria(form.dataNascimento) : '—';
@@ -70,8 +83,12 @@ export default function Matricula() {
       setError('Você deve aceitar os Termos de Consentimento LGPD para prosseguir.');
       return;
     }
-    if (!fotoFile || !rgFile || !atestadoFile) {
-      setError('Todos os documentos são obrigatórios (Foto, RG/Certidão e Atestado Médico).');
+    if (form.statusAtestado === 'anexado' && !atestadoFile) {
+      setError('Anexe o atestado médico ou selecione outro status para o documento.');
+      return;
+    }
+    if (!fotoFile || !rgFile) {
+      setError('A foto do atleta e o RG/Certidão são obrigatórios.');
       return;
     }
 
@@ -83,26 +100,31 @@ export default function Matricula() {
       return file_url;
     };
 
-    const [fotoUrl, rgUrl, atestadoUrl] = await Promise.all([
-    uploadFile(fotoFile),
-    uploadFile(rgFile),
-    uploadFile(atestadoFile)]
-    );
+    try {
+      const [fotoUrl, rgUrl, rgVersoUrl, atestadoUrl] = await Promise.all([
+        uploadFile(fotoFile),
+        uploadFile(rgFile),
+        rgVersoFile ? uploadFile(rgVersoFile) : Promise.resolve(undefined),
+        atestadoFile ? uploadFile(atestadoFile) : Promise.resolve(undefined)
+      ]);
 
-    const numeroMatricula = gerarNumeroMatricula();
-    await api.entities.Athlete.create({
-      ...form,
-      categoria,
-      numeroMatricula,
-      fotoUrl,
-      rgUrl,
-      atestadoUrl,
-      status: 'pendente'
-    });
+      const athlete = await api.entities.Athlete.create({
+        ...form,
+        categoria,
+        fotoUrl,
+        rgUrl,
+        rgVersoUrl,
+        atestadoUrl,
+        status: 'pendente'
+      });
 
-    setProtocolo(numeroMatricula);
-    setSuccess(true);
-    setLoading(false);
+      setProtocolo(athlete.numeroMatricula);
+      setSuccess(true);
+    } catch (err) {
+      setError(err.message || 'Não foi possível enviar a matrícula. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (success) {
@@ -126,6 +148,57 @@ export default function Matricula() {
         </div>
       </div>);
 
+  }
+
+  if (acceptingRegistrations === null) {
+    return (
+      <div className="min-h-[60vh] bg-gray-50 flex items-center justify-center px-4 py-20">
+        <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl p-10 text-center">
+          {settingsError ? (
+            <>
+              <AlertCircle size={40} className="text-amber-600 mx-auto mb-4" />
+              <h2 className="font-montserrat font-black text-burgundy text-2xl mb-3">Não foi possível verificar as matrículas</h2>
+              <p role="alert" className="text-gray-600">{settingsError}</p>
+            </>
+          ) : (
+            <>
+              <Loader2 size={36} className="animate-spin text-burgundy mx-auto mb-4" />
+              <p className="text-gray-600">Verificando disponibilidade das matrículas...</p>
+            </>
+          )}
+          <div className="mt-6 space-y-3 text-sm">
+            <a href={createWhatsAppLink(CONTACT_PHONE, 'Olá! Gostaria de informações sobre as matrículas da Escolinha Arco Iris.')} className="flex justify-center items-center gap-2 font-semibold text-green-700 hover:underline">
+              <Phone size={16} /> WhatsApp: (73) 99851-8813
+            </a>
+            <a href={`mailto:${CONTACT_EMAIL}`} className="flex justify-center items-center gap-2 font-semibold text-burgundy hover:underline">
+              <Mail size={16} /> {CONTACT_EMAIL}
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!acceptingRegistrations) {
+    return (
+      <div className="min-h-[60vh] bg-gray-50 flex items-center justify-center px-4 py-20">
+        <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl p-10 text-center border-t-4 border-gold">
+          <AlertCircle size={40} className="text-amber-600 mx-auto mb-4" />
+          <h2 className="font-montserrat font-black text-burgundy text-3xl mb-3">Matrículas suspensas</h2>
+          <p className="text-gray-600 mb-6">
+            No momento, não estamos aceitando novas matrículas. Entre em contato para tirar dúvidas e saber quando as inscrições serão reabertas.
+          </p>
+          <div className="space-y-3 text-sm">
+            <a href={createWhatsAppLink(CONTACT_PHONE, 'Olá! Gostaria de informações sobre as matrículas da Escolinha Arco Iris.')} className="flex justify-center items-center gap-2 font-semibold text-green-700 hover:underline">
+              <Phone size={16} /> WhatsApp: (73) 99851-8813
+            </a>
+            <a href={`mailto:${CONTACT_EMAIL}`} className="flex justify-center items-center gap-2 font-semibold text-burgundy hover:underline">
+              <Mail size={16} /> {CONTACT_EMAIL}
+            </a>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -190,9 +263,20 @@ export default function Matricula() {
                 <Select value={form.tipoSanguineo} onValueChange={(v) => updateForm('tipoSanguineo', v)}>
                   <SelectTrigger className="mt-2"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
-                    {TIPO_SANGUINEO.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                      {TIPO_SANGUINEO.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+              </div>
+              <div className="md:col-span-2">
+                  <Label htmlFor="alergias-restricoes" className="font-montserrat font-semibold text-gray-700 text-sm">Alergias ou restrições médicas *</Label>
+                  <textarea
+                    id="alergias-restricoes"
+                    required
+                    value={form.alergiasRestricoes}
+                    onChange={(event) => updateForm('alergiasRestricoes', event.target.value)}
+                    placeholder="Informe as alergias/restrições ou escreva “Nenhuma”"
+                    className="mt-2 min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+                  />
               </div>
             </div>
             {form.dataNascimento &&
@@ -210,8 +294,8 @@ export default function Matricula() {
             <div className="flex justify-end mt-6">
               <Button
               onClick={() => {
-                if (!form.nome || !form.dataNascimento) {
-                  setError('Preencha nome e data de nascimento.');
+                if (!form.nome || !form.dataNascimento || !form.tipoSanguineo || !form.alergiasRestricoes.trim()) {
+                  setError('Preencha nome, data de nascimento, tipo sanguíneo e alergias/restrições médicas.');
                   return;
                 }
                 if (!isIdadeDeMatriculaValida(form.dataNascimento)) {
@@ -245,34 +329,45 @@ export default function Matricula() {
                 <Input className="mt-2" value={form.telefoneResponsavel} onChange={(e) => updateForm('telefoneResponsavel', e.target.value)} placeholder="(75) 99999-9999" />
               </div>
               <div>
-                <Label className="font-montserrat font-semibold text-gray-700 text-sm">CEP</Label>
-                <Input className="mt-2" value={form.cep} onChange={(e) => updateForm('cep', e.target.value)} placeholder="00000-000" />
+                <Label htmlFor="matricula-cep" className="font-montserrat font-semibold text-gray-700 text-sm">CEP *</Label>
+                <Input id="matricula-cep" required className="mt-2" value={form.cep} onChange={(e) => updateForm('cep', e.target.value)} placeholder="00000-000" />
               </div>
               <div className="md:col-span-2">
-                <Label className="font-montserrat font-semibold text-gray-700 text-sm">Rua / Logradouro</Label>
-                <Input className="mt-2" value={form.rua} onChange={(e) => updateForm('rua', e.target.value)} />
+                <Label htmlFor="matricula-rua" className="font-montserrat font-semibold text-gray-700 text-sm">Rua / Logradouro *</Label>
+                <Input id="matricula-rua" required className="mt-2" value={form.rua} onChange={(e) => updateForm('rua', e.target.value)} />
               </div>
               <div>
-                <Label className="font-montserrat font-semibold text-gray-700 text-sm">Número</Label>
-                <Input className="mt-2" value={form.numero} onChange={(e) => updateForm('numero', e.target.value)} />
+                <Label htmlFor="matricula-numero" className="font-montserrat font-semibold text-gray-700 text-sm">Número *</Label>
+                <Input id="matricula-numero" required className="mt-2" value={form.numero} onChange={(e) => updateForm('numero', e.target.value)} />
               </div>
               <div>
-                <Label className="font-montserrat font-semibold text-gray-700 text-sm">Bairro</Label>
-                <Input className="mt-2" value={form.bairro} onChange={(e) => updateForm('bairro', e.target.value)} />
+                <Label htmlFor="matricula-bairro" className="font-montserrat font-semibold text-gray-700 text-sm">Bairro *</Label>
+                <Input id="matricula-bairro" required className="mt-2" value={form.bairro} onChange={(e) => updateForm('bairro', e.target.value)} />
               </div>
               <div>
-                <Label className="font-montserrat font-semibold text-gray-700 text-sm">Cidade</Label>
-                <Input className="mt-2" value={form.cidade} onChange={(e) => updateForm('cidade', e.target.value)} />
+                <Label htmlFor="matricula-cidade" className="font-montserrat font-semibold text-gray-700 text-sm">Cidade *</Label>
+                <Input id="matricula-cidade" required className="mt-2" value={form.cidade} onChange={(e) => updateForm('cidade', e.target.value)} />
               </div>
               <div>
-                <Label className="font-montserrat font-semibold text-gray-700 text-sm">Estado</Label>
-                <Input className="mt-2" value={form.estado} onChange={(e) => updateForm('estado', e.target.value)} placeholder="BA" />
+                <Label htmlFor="matricula-estado" className="font-montserrat font-semibold text-gray-700 text-sm">UF *</Label>
+                <Input id="matricula-estado" required maxLength={2} className="mt-2" value={form.estado} onChange={(e) => updateForm('estado', e.target.value.toUpperCase())} placeholder="BA" />
               </div>
             </div>
             <div className="flex justify-between mt-6">
               <Button variant="outline" onClick={() => setStep(1)} className="font-montserrat font-semibold">Voltar</Button>
               <Button
-              onClick={() => {if (!form.nomeResponsavel || !form.telefoneResponsavel) {setError('Preencha nome e telefone do responsável.');return;}setError('');setStep(3);}}
+              onClick={() => {
+                if (!form.nomeResponsavel || !form.telefoneResponsavel) {
+                  setError('Preencha nome e telefone do responsável.');
+                  return;
+                }
+                if (!form.rua.trim() || !form.numero.trim() || !form.bairro.trim() || !form.cidade.trim() || !form.estado.trim() || !form.cep.trim()) {
+                  setError('Preencha o endereço completo: rua, número, bairro, cidade, UF e CEP.');
+                  return;
+                }
+                setError('');
+                setStep(3);
+              }}
               className="bg-burgundy hover:bg-red-900 text-white font-montserrat font-bold px-8">
               
                 Próximo
@@ -287,16 +382,50 @@ export default function Matricula() {
             <h2 className="font-montserrat font-black text-burgundy text-2xl mb-2 flex items-center gap-3">
               <FileText size={24} className="text-gold" /> Documentos
             </h2>
-            <p className="text-gray-500 text-sm mb-6">Todos os documentos são obrigatórios e armazenados com segurança.</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <p className="text-gray-500 text-sm mb-6">A foto e a frente do RG ou Certidão são obrigatórias. O verso do RG é opcional. Informe o status do atestado médico.</p>
+            <div className="mb-6">
+              <Label htmlFor="status-atestado" className="font-montserrat font-semibold text-gray-700 text-sm">Status do atestado médico *</Label>
+              <select
+                id="status-atestado"
+                required
+                value={form.statusAtestado}
+                onChange={(event) => {
+                  updateForm('statusAtestado', event.target.value);
+                  if (event.target.value !== 'anexado') setAtestadoFile(null);
+                }}
+                className="mt-2 flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+              >
+                <option value="">Selecione o status</option>
+                <option value="anexado">Anexado nesta matrícula</option>
+                <option value="entrega_posterior">Será entregue posteriormente</option>
+                <option value="nao_possui">Não possui</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
               <UploadField label="Foto do Atleta" id="foto" accept=".jpg,.jpeg,.png" file={fotoFile} onChange={setFotoFile} required />
-              <UploadField label="RG ou Certidão de Nascimento" id="rg" accept=".jpg,.jpeg,.png,.pdf" file={rgFile} onChange={setRgFile} required />
-              <UploadField label="Atestado Médico" id="atestado" accept=".jpg,.jpeg,.png,.pdf" file={atestadoFile} onChange={setAtestadoFile} required />
+              <UploadField label="Frente do RG ou Certidão" id="rg" accept=".jpg,.jpeg,.png,.pdf" file={rgFile} onChange={setRgFile} required />
+              <UploadField label="Verso do RG (opcional)" id="rg-verso" accept=".jpg,.jpeg,.png,.pdf" file={rgVersoFile} onChange={setRgVersoFile} />
+              <UploadField label="Atestado Médico" id="atestado" accept=".jpg,.jpeg,.png,.pdf" file={atestadoFile} onChange={setAtestadoFile} required={form.statusAtestado === 'anexado'} />
             </div>
             <div className="flex justify-between mt-8">
               <Button variant="outline" onClick={() => setStep(2)} className="font-montserrat font-semibold">Voltar</Button>
               <Button
-              onClick={() => {if (!fotoFile || !rgFile || !atestadoFile) {setError('Selecione todos os documentos.');return;}setError('');setStep(4);}}
+              onClick={() => {
+                if (!fotoFile || !rgFile) {
+                  setError('Selecione a foto do atleta e o RG/Certidão.');
+                  return;
+                }
+                if (!form.statusAtestado) {
+                  setError('Informe o status do atestado médico.');
+                  return;
+                }
+                if (form.statusAtestado === 'anexado' && !atestadoFile) {
+                  setError('Anexe o atestado médico ou selecione outro status.');
+                  return;
+                }
+                setError('');
+                setStep(4);
+              }}
               className="bg-burgundy hover:bg-red-900 text-white font-montserrat font-bold px-8">
               
                 Próximo
@@ -317,7 +446,7 @@ export default function Matricula() {
               <ul className="list-disc ml-5 mt-2 space-y-1">
                 <li>Sou responsável legal pelo menor indicado neste formulário.</li>
                 <li>Autorizo o uso dos dados pessoais do menor para fins de gestão esportiva e educacional.</li>
-                <li>Consinto com o armazenamento dos documentos enviados (foto, RG/Certidão e Atestado Médico) em ambiente seguro e de uso exclusivo da Escolinha de Futebol Arco Iris.</li>
+                <li>Consinto com o armazenamento dos dados pessoais e de saúde informados e dos documentos enviados, exclusivamente para fins de matrícula, segurança e gestão esportiva do projeto, pelo período necessário e conforme a legislação aplicável.</li>
                 <li>Compreendo que estes dados não serão compartilhados com terceiros sem meu consentimento expresso.</li>
                 <li>Estou ciente que posso solicitar a exclusão ou correção dos dados a qualquer momento.</li>
               </ul>
@@ -341,7 +470,9 @@ export default function Matricula() {
               <p><span className="text-gray-500">Atleta:</span> <strong>{form.nome}</strong></p>
               <p><span className="text-gray-500">Categoria:</span> <strong>{categoria}</strong></p>
               <p><span className="text-gray-500">Responsável:</span> <strong>{form.nomeResponsavel}</strong></p>
-              <p><span className="text-gray-500">Documentos:</span> <strong>3 arquivos selecionados</strong></p>
+              <p><span className="text-gray-500">Tipo sanguíneo:</span> <strong>{form.tipoSanguineo}</strong></p>
+              <p><span className="text-gray-500">Alergias/restrições:</span> <strong>{form.alergiasRestricoes}</strong></p>
+              <p><span className="text-gray-500">Atestado médico:</span> <strong>{form.statusAtestado === 'anexado' ? 'Anexado' : form.statusAtestado === 'entrega_posterior' ? 'Entrega posterior' : 'Não possui'}</strong></p>
             </div>
 
             <div className="flex justify-between">

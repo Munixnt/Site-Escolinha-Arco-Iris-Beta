@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '@/api/client';
-import { ArrowLeft, CreditCard, CheckCircle, XCircle, Loader2, FileText, User } from 'lucide-react';
+import { ArrowLeft, CreditCard, CheckCircle, XCircle, Loader2, FileText, FileDown, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { calcularIdade, categoriaColors, statusColors, MESES } from '@/utils/athleteUtils';
 import { generateAthleteCard } from '@/utils/cardGenerator';
+import { generateEnrollmentDocuments } from '@/utils/enrollmentDocuments';
+import { createWhatsAppLink } from '@/utils/whatsapp';
 
 export default function AtletaDetalhe() {
   const { id } = useParams();
@@ -13,6 +15,10 @@ export default function AtletaDetalhe() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentError, setDocumentError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [whatsAppUrl, setWhatsAppUrl] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -27,22 +33,64 @@ export default function AtletaDetalhe() {
 
   const aprovar = async () => {
     setSaving(true);
-    const updated = await api.entities.Athlete.update(id, { status: 'ativo' });
-    setAthlete(updated);
-    setSaving(false);
+    setActionError('');
+    const messageWindow = window.open('about:blank', '_blank');
+    try {
+      const updated = await api.entities.Athlete.update(id, { status: 'ativo' });
+      setAthlete(updated);
+      const message = `Olá, ${athlete.nomeResponsavel || 'responsável'}. Seu filho foi aceito no projeto da Escolinha Arco Íris com o número de matrícula ${athlete.numeroMatricula}. Vamos marcar um momento para assinar a matrícula e os termos?`;
+      const link = createWhatsAppLink(athlete.telefoneResponsavel, message);
+      setWhatsAppUrl(link || '');
+      if (messageWindow && link) {
+        messageWindow.opener = null;
+        messageWindow.location.href = link;
+      } else if (messageWindow) {
+        messageWindow.close();
+      }
+      if (!link) setActionError('Matrícula aprovada, mas o telefone do responsável não permite abrir o WhatsApp.');
+    } catch (error) {
+      if (messageWindow) messageWindow.close();
+      setActionError(error.message || 'Não foi possível aprovar a matrícula.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const inativar = async () => {
     setSaving(true);
-    const updated = await api.entities.Athlete.update(id, { status: 'inativo' });
-    setAthlete(updated);
-    setSaving(false);
+    setActionError('');
+    try {
+      const updated = await api.entities.Athlete.update(id, { status: 'inativo' });
+      setAthlete(updated);
+    } catch (error) {
+      setActionError(error.message || 'Não foi possível inativar o atleta.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const gerarCarteirinha = async () => {
     setGenerating(true);
-    await generateAthleteCard(athlete);
-    setGenerating(false);
+    setDocumentError('');
+    try {
+      await generateAthleteCard(athlete);
+    } catch (error) {
+      setDocumentError(error.message || 'Não foi possível gerar a carteirinha.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const gerarFichaETermos = async () => {
+    setDocumentsLoading(true);
+    setDocumentError('');
+    try {
+      await generateEnrollmentDocuments(athlete);
+    } catch (error) {
+      setDocumentError(error.message || 'Não foi possível gerar a ficha e os termos.');
+    } finally {
+      setDocumentsLoading(false);
+    }
   };
 
   if (loading) return (
@@ -79,12 +127,31 @@ export default function AtletaDetalhe() {
               <XCircle size={16} /> Inativar
             </Button>
           )}
-          <Button onClick={gerarCarteirinha} disabled={generating} className="bg-burgundy hover:bg-red-900 text-white font-montserrat font-bold gap-2">
+          <Button onClick={gerarCarteirinha} disabled={generating || documentsLoading} className="bg-burgundy hover:bg-red-900 text-white font-montserrat font-bold gap-2">
             {generating ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
             Gerar Carteirinha
           </Button>
+          <Button onClick={gerarFichaETermos} disabled={generating || documentsLoading} variant="outline" className="font-montserrat font-bold gap-2">
+            {documentsLoading ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+            Ficha e termos PDF
+          </Button>
         </div>
       </div>
+      {actionError && (
+        <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {actionError}
+        </p>
+      )}
+      {whatsAppUrl && (
+        <p className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Matrícula aprovada. Se o WhatsApp não abriu, <a href={whatsAppUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">abrir mensagem para o responsável</a>. Revise e confirme o envio no WhatsApp.
+        </p>
+      )}
+      {documentError && (
+        <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {documentError}
+        </p>
+      )}
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Foto + Status */}
@@ -111,6 +178,16 @@ export default function AtletaDetalhe() {
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-500">Tipo Sanguíneo</span>
               <span className="font-bold text-burgundy">{athlete.tipoSanguineo || '—'}</span>
+            </div>
+            <div className="flex flex-col border-b border-gray-100 pb-2">
+              <span className="text-gray-500">Alergias / restrições médicas</span>
+              <span className="font-semibold text-gray-700">{athlete.alergiasRestricoes || '—'}</span>
+            </div>
+            <div className="flex justify-between border-b border-gray-100 pb-2">
+              <span className="text-gray-500">Status do atestado</span>
+              <span className="font-semibold text-gray-700">
+                {{ anexado: 'Anexado', entrega_posterior: 'Entrega posterior', nao_possui: 'Não possui' }[athlete.statusAtestado] || '—'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Nascimento</span>
@@ -146,6 +223,7 @@ export default function AtletaDetalhe() {
             {[
               { label: 'Foto do Atleta', url: athlete.fotoUrl },
               { label: 'RG / Certidão', url: athlete.rgUrl },
+              { label: 'Verso do RG', url: athlete.rgVersoUrl },
               { label: 'Atestado Médico', url: athlete.atestadoUrl },
             ].map(({ label, url }) => (
               <div key={label} className="flex items-center justify-between border border-gray-100 rounded-lg p-2">

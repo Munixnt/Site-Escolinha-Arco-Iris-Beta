@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import { api } from '@/api/client';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 export default function AdminLayout() {
   const [user, setUser] = useState(null);
